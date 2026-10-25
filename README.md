@@ -9,6 +9,11 @@ computer vision, and built a rider app that warns cyclists when the lane is bloc
   shows lane status and alerts in sync, for presenting.
 - **Detection pipeline** (`src/`): video → detections CSV → lane status events for the app.
 
+> **Note:** this repository is a copy of our team's original Hackachusetts repository, made for
+> the BU submission. The whole team contributed to the project, but because the files were
+> copied over rather than forked, the commit history here doesn't show my teammates'
+> contributions.
+
 ## Repository layout
 
 ```
