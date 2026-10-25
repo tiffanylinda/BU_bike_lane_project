@@ -68,7 +68,14 @@ export function useReplayClock(durationSeconds) {
   // --- Controls: stable callbacks the UI buttons call. ---
   const play = useCallback(() => setPlaying(true), [])
   const pause = useCallback(() => setPlaying(false), [])
-  const toggle = useCallback(() => setPlaying((p) => !p), [])
+  const toggle = useCallback(() => {
+    // Pressing Play at the very end starts the replay over instead of doing nothing.
+    if (!playing && currentTime >= durationRef.current) {
+      lastTsRef.current = null
+      setCurrentTime(0)
+    }
+    setPlaying((p) => !p)
+  }, [playing, currentTime])
 
   const seek = useCallback((t) => {
     // Clamp into [0, duration] so dragging the timeline can't go out of range.

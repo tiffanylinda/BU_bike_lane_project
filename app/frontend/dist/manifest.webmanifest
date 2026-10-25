@@ -1,0 +1,11 @@
+{
+  "name": "Comm Ave Lane Watch",
+  "short_name": "Lane Watch",
+  "description": "Live bike lane status for Comm Ave, Essex St to Kenmore Sq.",
+  "start_url": "rider.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f131a",
+  "theme_color": "#0f131a",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

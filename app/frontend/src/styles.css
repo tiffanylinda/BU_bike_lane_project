@@ -1,21 +1,24 @@
 /* styles.css — dark theme for the Comm Ave replay demo. Plain CSS, no UI library.
-   Status colors are CSS variables so green/amber/red are defined in ONE place. */
+   Status colors are CSS variables so green/amber/red are defined in ONE place.
+   Sizes are on the large side so the demo reads well on a projector. */
 
 :root {
   /* Status palette (green = lane open/clear). */
-  --clear: #22c55e;
-  --possible: #f59e0b;
-  --blocked: #ef4444;
+  --clear: #4ade80;
+  --possible: #fbbf24;
+  --blocked: #ef5350;
+  --accent: #3b82f6;
+  --link: #60a5fa;
 
   /* Dark theme surfaces + text. */
-  --bg: #0f1115;
-  --surface: #171a21;
-  --surface-2: #1f2430;
-  --border: #2a3040;
+  --bg: #0f131a;
+  --surface: #161b24;
+  --surface-2: #1e2533;
+  --border: #2a3242;
   --text: #e8eaed;
   --text-dim: #9aa3b2;
 
-  --radius: 12px;
+  --radius: 14px;
 }
 
 * {
@@ -30,34 +33,36 @@ body {
 }
 
 .app {
-  max-width: 1200px;
+  max-width: 1680px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 24px;
 }
 
 /* ---------- Header ---------- */
 .header {
-  margin-bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.header__link {
+  color: var(--link);
+  font-weight: 600;
+  text-decoration: none;
+}
+.header__link:hover {
+  text-decoration: underline;
 }
 .header__title {
   margin: 0;
-  font-size: 1.6rem;
+  font-size: 2rem;
 }
 .header__subtitle {
   margin: 4px 0 0;
   color: var(--text-dim);
-  font-size: 0.95rem;
-}
-
-/* ---------- Sample-data warning ---------- */
-.sample-warning {
-  background: #3a2a0a;
-  border: 1px solid #a16207;
-  color: #fde68a;
-  padding: 8px 12px;
-  border-radius: var(--radius);
-  font-size: 0.85rem;
-  margin-bottom: 16px;
+  font-size: 1.1rem;
 }
 
 .loading {
@@ -65,27 +70,48 @@ body {
   padding: 40px 0;
 }
 
-/* ---------- Layout: 3 columns, stacks on narrow screens ---------- */
+/* Small uppercase label used above phone sections and the lock-screen preview. */
+.section-heading {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+/* ---------- Layout: video | phone | lock-screen ----------
+   minmax(0, 1fr) lets the video column shrink instead of pushing the page wider than
+   the window (which would cause sideways scrolling on stage). */
 .layout {
   display: grid;
-  grid-template-columns: 1fr 340px 220px;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 340px 230px;
+  gap: 24px;
   align-items: start;
 }
-/* Phone-width responsive: single column stack. */
-@media (max-width: 900px) {
+/* Mid-size screens: lock-screen preview moves under the phone. */
+@media (max-width: 1280px) {
   .layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+  .lockscreen {
+    grid-column: 2;
+  }
+}
+/* Phone-width: single column stack. */
+@media (max-width: 900px) {
+  .app {
+    padding: 16px;
+  }
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lockscreen {
+    grid-column: auto;
   }
 }
 
 /* ---------- Video panel ---------- */
-.video-panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px;
-}
 .video-stage {
   position: relative;
   width: 100%;
@@ -100,7 +126,7 @@ body {
 .video-el {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   background: #000;
 }
 .video-placeholder {
@@ -109,12 +135,12 @@ body {
   padding: 20px;
 }
 .video-placeholder__title {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   color: var(--text);
   margin-bottom: 6px;
 }
 .video-placeholder__hint {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
 }
 
 /* Controls row */
@@ -122,76 +148,99 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 10px;
+  margin-top: 14px;
 }
 .btn {
   background: var(--surface-2);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 6px 12px;
+  padding: 9px 16px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 1rem;
+  font-family: inherit;
 }
 .btn:hover {
   border-color: #3b4458;
 }
+.btn:focus-visible,
+.timeline:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
 .btn--active {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
 }
 .controls__speed {
   display: flex;
-  gap: 4px;
+  gap: 8px;
+  margin-left: 14px;
 }
 .btn--speed {
-  min-width: 40px;
+  min-width: 52px;
 }
 .controls__time {
   margin-left: auto;
   color: var(--text-dim);
+  font-size: 1rem;
   font-variant-numeric: tabular-nums;
 }
 
-/* Timeline */
+/* Timeline: thin colored ticks at each event, a dimmer fill for progress so far. */
 .timeline {
   position: relative;
-  height: 16px;
-  margin-top: 12px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  height: 40px;
+  margin-top: 14px;
+  background: var(--surface);
   border-radius: 8px;
   cursor: pointer;
-}
-.timeline__marker {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  opacity: 0.85;
-}
-.timeline__marker--possible {
-  background: var(--possible);
-}
-.timeline__marker--blocked {
-  background: var(--blocked);
+  touch-action: none; /* let pointer drag scrub instead of scrolling on touch screens */
+  overflow: hidden;
 }
 .timeline__progress {
   position: absolute;
   top: 0;
   bottom: 0;
   left: 0;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 8px 0 0 8px;
+  background: #1e2a40;
+}
+.timeline__tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  transform: translateX(-1px);
+}
+.timeline__tick--possible {
+  background: var(--possible);
+}
+.timeline__tick--blocked {
+  background: var(--blocked);
+}
+.timeline__tick--cleared {
+  background: var(--clear);
 }
 .timeline__playhead {
   position: absolute;
-  top: -3px;
+  top: 0;
+  bottom: 0;
   width: 3px;
-  height: 22px;
   background: #fff;
-  border-radius: 2px;
   transform: translateX(-1px);
+}
+
+/* ---------- Sample-data warning ---------- */
+.sample-warning {
+  margin-top: 14px;
+  background: #2a2110;
+  border: 1px solid #a16207;
+  color: #fbbf24;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.95rem;
 }
 
 /* ---------- Phone ---------- */
@@ -201,69 +250,86 @@ body {
 }
 .phone__frame {
   position: relative;
-  width: 320px;
+  width: 340px;
   max-width: 100%;
-  background: #0b0d12;
-  border: 6px solid #0b0d12;
-  border-radius: 28px;
-  box-shadow: 0 0 0 2px var(--border);
+  height: 680px;
+  background: #070a10;
+  border: 10px solid #1a202b;
+  border-radius: 40px;
+  box-shadow: 0 0 0 2px #232a37, 0 20px 50px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
-.phone__content {
+.phone__notch {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 130px;
+  height: 22px;
+  transform: translateX(-50%);
+  background: #1a202b;
+  border-radius: 0 0 14px 14px;
+  z-index: 1;
+}
+/* ---------- Rider screen (shared by the phone frame and the rider web app) ---------- */
+.rider-screen {
+  display: flex;
+  flex-direction: column;
   padding: 16px;
 }
-.phone__heading {
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
+/* Inside the fixed-height phone frame: the alerts list takes the spare height and
+   scrolls, so the bike counter and crash history stay pinned to the bottom. */
+.phone__frame .rider-screen {
+  height: 100%;
+  padding-top: 36px;
+}
+.rider-screen__heading {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--text-dim);
 }
-.phone__location {
-  font-size: 0.85rem;
-  color: var(--text);
-  margin: 2px 0 12px;
+.rider-screen__location {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 4px 0 16px;
 }
 
 /* ---------- Notification banner ----------
-   BUG FIX: the wrapper reserves vertical space (max-height animates from 0) so the banner
-   PUSHES the content below it down instead of overlapping the heading. The banner itself
-   has a SOLID background (no transparency), so even if layout shifted it would never show
-   text underneath. */
-.notification-wrap {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.25s ease;
-}
-.notification-wrap--visible {
-  max-height: 64px; /* reserve room while visible -> content slides DOWN */
-}
+   Floats over the top of the screen (notch + heading) and slides down into view. Solid,
+   opaque background so nothing underneath shows through. */
 .notification-banner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 14px;
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 2;
+  padding: 12px 16px;
+  border-radius: 12px;
   color: #fff;
-  font-size: 0.85rem;
-  /* Solid, opaque backgrounds per level (no rgba transparency). */
-  background: #334155;
+  font-size: 1rem;
+  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  transform: translateY(-140%);
+  transition: transform 0.35s ease;
 }
-.notification-banner--clear {
-  background: #166534;
-}
-.notification-banner--possible {
-  background: #92610a;
+.notification-banner--visible {
+  transform: translateY(0);
 }
 .notification-banner--blocked {
-  background: #991b1b;
+  background: var(--blocked);
 }
-.notification-banner__msg {
-  line-height: 1.2;
+.notification-banner--cleared {
+  background: #16a34a;
 }
 
 /* ---------- Status card ---------- */
 .status-card {
+  flex: 0 0 auto;
   border-radius: var(--radius);
-  padding: 16px;
-  margin-bottom: 12px;
+  padding: 18px 18px 20px;
+  margin-bottom: 14px;
   color: #0b0d12;
 }
 .status-card--clear {
@@ -277,34 +343,42 @@ body {
   color: #fff;
 }
 .status-card__title {
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.15;
 }
 .status-card__subtitle {
-  font-size: 0.9rem;
-  margin-top: 4px;
+  font-size: 1rem;
+  margin-top: 6px;
 }
 .status-card__timer {
   margin-top: 8px;
-  font-weight: 700;
+  font-size: 2.4rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
 /* ---------- Reroute card ---------- */
 .reroute-card {
-  background: var(--surface-2);
+  flex: 0 0 auto;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px;
-  margin-bottom: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.reroute-card__heading {
+  color: var(--link);
+  font-weight: 700;
+  margin-bottom: 4px;
 }
 .reroute-card__name {
-  font-weight: 600;
+  font-size: 1.05rem;
 }
 .reroute-card__extra {
   color: var(--possible);
-  font-size: 0.85rem;
-  margin: 2px 0;
+  font-weight: 600;
+  margin: 4px 0;
 }
 .reroute-card__desc {
   color: var(--text-dim);
@@ -319,6 +393,10 @@ body {
   display: inline-block;
   flex: 0 0 auto;
 }
+.dot--lg {
+  width: 14px;
+  height: 14px;
+}
 .dot--clear {
   background: var(--clear);
 }
@@ -331,139 +409,156 @@ body {
 
 /* ---------- Recent alerts ---------- */
 .recent-alerts {
+  flex: 1 1 auto;
+  min-height: 0; /* allow the list to shrink and scroll inside the flex column */
+  display: flex;
+  flex-direction: column;
   margin-bottom: 12px;
 }
-.recent-alerts__heading,
-.crash-history__heading {
-  font-size: 0.8rem;
-  color: var(--text-dim);
-  margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
 .recent-alerts__empty {
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 10px 14px;
   color: var(--text-dim);
-  font-size: 0.85rem;
 }
 .recent-alerts__list {
   list-style: none;
   margin: 0;
   padding: 0;
+  overflow-y: auto;
 }
 .recent-alerts__item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-  font-size: 0.85rem;
+  gap: 10px;
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  font-size: 1rem;
 }
 .recent-alerts__msg {
   flex: 1;
 }
 .recent-alerts__time {
   color: var(--text-dim);
+  font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
 }
 
 /* ---------- Bike counter ---------- */
 .bike-counter {
+  flex: 0 0 auto;
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
   border-radius: var(--radius);
-  padding: 10px 12px;
+  padding: 14px 16px;
   margin-bottom: 12px;
 }
 .bike-counter__num {
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--clear);
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--link);
+  font-variant-numeric: tabular-nums;
 }
 .bike-counter__label {
-  font-size: 0.8rem;
+  max-width: 9em;
+  font-size: 0.9rem;
   color: var(--text-dim);
 }
 
 /* ---------- Crash history ---------- */
+.crash-history {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+}
 .crash-history__list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 .crash-history__row {
-  display: flex;
-  gap: 8px;
-  font-size: 0.78rem;
-  padding: 4px 0;
-  border-bottom: 1px solid var(--border);
-}
-.crash-history__row:last-child {
-  border-bottom: none;
-}
-.crash-history__date {
+  font-size: 0.85rem;
   color: var(--text-dim);
-  flex: 0 0 72px;
-}
-.crash-history__type {
-  flex: 1;
-}
-.crash-history__sev {
-  color: var(--text-dim);
+  padding: 2px 0;
 }
 
 /* ---------- Lock-screen widget ---------- */
-.lockscreen__label {
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  margin-bottom: 8px;
-}
-.lockscreen__phone {
-  background: linear-gradient(160deg, #1b2330, #0b0d12);
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  padding: 18px 14px;
-  text-align: center;
-}
-.lockscreen__clock {
-  font-size: 2.2rem;
-  font-weight: 300;
-}
-.lockscreen__date {
-  color: var(--text-dim);
-  font-size: 0.8rem;
-  margin-bottom: 14px;
-}
 .lockscreen__widget {
-  border-radius: 14px;
-  padding: 12px;
-  text-align: left;
-  background: var(--surface-2);
-  border-left: 4px solid var(--clear);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 14px 16px;
 }
-.lockscreen__widget--clear {
-  border-left-color: var(--clear);
+.lockscreen__title {
+  font-size: 1.05rem;
+  font-weight: 700;
 }
-.lockscreen__widget--possible {
-  border-left-color: var(--possible);
-}
-.lockscreen__widget--blocked {
-  border-left-color: var(--blocked);
-}
-.lockscreen__widget-title {
-  font-size: 0.72rem;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.lockscreen__widget-status {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-top: 2px;
-}
-.lockscreen__widget-sub {
-  font-size: 0.78rem;
+.lockscreen__sub {
+  font-size: 0.85rem;
   color: var(--text-dim);
   margin-top: 2px;
+}
+
+/* ---------- Rider web app (rider.html): full-screen, mobile first ---------- */
+.rider-app {
+  position: relative;
+  max-width: 480px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 auto;
+  /* Keep content clear of the iPhone notch / home bar when installed full-screen. */
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  overflow-x: hidden;
+}
+.rider-app .notification-banner {
+  position: fixed;
+  top: calc(8px + env(safe-area-inset-top));
+  left: 50%;
+  right: auto;
+  width: min(464px, calc(100% - 16px));
+  transform: translate(-50%, -160%);
+}
+.rider-app .notification-banner--visible {
+  transform: translate(-50%, 0);
+}
+.rider-app__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 0;
+}
+.rider-app__name {
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+.rider-app__alerts {
+  padding: 7px 12px;
+  font-size: 0.9rem;
+}
+.rider-app__feed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 16px 0;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+.rider-app .recent-alerts__list {
+  overflow: visible;
+}
+.rider-app__footer {
+  padding: 8px 16px 24px;
+  font-size: 0.85rem;
+}
+.rider-app__footer a {
+  color: var(--link);
 }

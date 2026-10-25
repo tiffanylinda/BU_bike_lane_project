@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CONFIG } from '../config.js'
 import { mmss } from '../lib/format.js'
 import Timeline from './Timeline.jsx'
+import SampleDataWarning from './SampleDataWarning.jsx'
 
 // VideoPanel — the left column: the recorded clip plus the replay controls and timeline.
 //
@@ -17,10 +18,12 @@ export default function VideoPanel({
   controls,
   duration,
   events,
+  soundOn,
+  onToggleSound,
+  usedSample,
   onVideoDuration,
 }) {
   const videoRef = useRef(null)
-  const [muted, setMuted] = useState(true) // muted by default; Sound toggle controls it
   const [videoFailed, setVideoFailed] = useState(false)
 
   // Keep video.currentTime aligned with the clock. We only correct when they drift apart
@@ -53,13 +56,6 @@ export default function VideoPanel({
     video.playbackRate = speed
   }, [speed, videoFailed])
 
-  // Apply mute state.
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
-    video.muted = muted
-  }, [muted])
-
   const speeds = [1, 2, 4]
 
   return (
@@ -79,7 +75,7 @@ export default function VideoPanel({
             ref={videoRef}
             className="video-el"
             src={CONFIG.videoSrc}
-            muted={muted}
+            muted={!soundOn}
             playsInline
             preload="metadata"
             // No native controls: the replay controls below drive everything.
@@ -94,10 +90,10 @@ export default function VideoPanel({
 
       <div className="controls">
         <button className="btn" onClick={controls.toggle}>
-          {playing ? 'Pause' : 'Play'}
+          {playing ? '❚❚ Pause' : '▶ Play'}
         </button>
         <button className="btn" onClick={controls.restart}>
-          Restart
+          ↺ Restart
         </button>
 
         <div className="controls__speed">
@@ -112,8 +108,8 @@ export default function VideoPanel({
           ))}
         </div>
 
-        <button className="btn" onClick={() => setMuted((m) => !m)}>
-          Sound {muted ? 'off' : 'on'}
+        <button className="btn" onClick={onToggleSound} aria-pressed={soundOn}>
+          {soundOn ? '🔊 Sound on' : '🔇 Sound off'}
         </button>
 
         <span className="controls__time">
@@ -127,6 +123,8 @@ export default function VideoPanel({
         events={events}
         onSeek={controls.seek}
       />
+
+      {usedSample && <SampleDataWarning />}
     </section>
   )
 }

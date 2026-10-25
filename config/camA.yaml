@@ -10,9 +10,17 @@ location:
   timezone: America/New_York
 
 model:
-  weights: yolov8n.pt          # try yolov8s.pt if detections are poor
-  conf: 0.35                   # minimum detection confidence
+  weights: yolov8s.pt          # "s" finds small far-side vehicles much better than "n"; sampling makes up the speed
+  conf: 0.25                   # far vehicles score low; LaneMonitor's 10 s rule filters one-off false hits
   classes: [0, 1, 2, 3, 5, 7, 36]   # person, bicycle, car, motorcycle, bus, truck, skateboard
+  imgsz: 1280                 # YOLO input size for the crop below (multiple of 32)
+
+detection:                     # speed + far-side accuracy (see detection_roi in src/detect.py)
+  sample_fps: 5                # analyse 5 frames per second instead of all 30-60
+  roi_pad:                     # crop = lane polygon's bounding box plus this padding (pixels)
+    above: 90                  # vehicle boxes stick up above the lane, so pad most here
+    below: 30
+    side: 40
 
 counting_line:                 # straight up and down across the lane, tall enough to catch riders
   points: [[575, 385], [575, 445]]
@@ -27,14 +35,19 @@ lane_polygon:                  # along the upper edge of the lane, then back alo
   - [574, 425]
   - [857, 372]
 
+extra_lane_polygons:           # the same lane in the block PAST the intersection (where the white car parks).
+  - [[1012, 318], [1320, 289], [1320, 306], [1012, 340]]   # estimated from data/frames/camA_frame_points.png; check it on an annotated video
+
 blockage:
   vehicle_classes: [car, truck, bus]
   stopped_max_speed_px_s: 15   # slower than this counts as stopped (not just passing)
   possible_after_s: 10         # stopped this long -> status "possible"
   blocked_after_s: 30          # stopped this long -> status "blocked" (an alert)
   clear_after_s: 5             # lane empty this long -> status "clear" (avoids flicker)
-  merge_gap_s: 10              # rejoin a vehicle the tracker lost and re-found
-  merge_distance_px: 60
+  speed_window_s: 2            # speed is averaged over this many seconds
+  merge_gap_s: 15              # keep a hidden stopped vehicle this long (Green Line / bus passing in front)
+  merge_distance_px: 40        # a box within this many px of a followed vehicle is the same vehicle
+  lane_tolerance_px: 8         # far lane is ~10 px tall: accept wheels this close to the polygon
 
 scooter:
   min_speed_px_s: 120          # person faster than this, with no bicycle -> possible scooter

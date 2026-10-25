@@ -267,6 +267,62 @@ def select_frame_indices(total_frames, fps, stride, max_seconds):
         if should_process_frame(frame_index, fps, stride, max_seconds):
             yield frame_index
 
+
+def stride_for_sample_fps(fps, sample_fps):
+    """Turn "analyse N frames per second" into a frame stride (an int >= 1).
+
+    WHY: blockage detection only needs a few frames per second — a parked car does not
+    move — but our clips are recorded at 30-60 fps. Running YOLO on every frame is the
+    main reason detection took so long. Sampling 5 fps from a 60 fps clip is a stride of
+    12, so the run is roughly 12x faster with no loss for blockages. Asking for fps
+    (instead of a raw stride) gives the same speed on 30 fps and 60 fps footage.
+    """
+    return max(1, round(fps / sample_fps))
+
+
+def detection_roi(cfg, frame_width, frame_height):
+    """Return the (x1, y1, x2, y2) crop that YOLO should look at, or None for the full frame.
+
+    WHY crop: our bike lane is on the FAR side of Comm Ave, so vehicles in it are tiny —
+    a parked car is roughly 50x25 pixels in a 1920x1080 frame. YOLO shrinks every image to
+    ``imgsz`` (640 by default) before detecting, which turns that car into ~15x8 pixels:
+    too small for the model to see. Cropping to just the band around the lane and letting
+    YOLO upscale that crop to ``imgsz`` gives the far vehicles 4-5x more pixels, which is
+    the single biggest accuracy win for this camera angle. It is also faster, because the
+    model is not wasting time on the near side of the street.
+
+    Settings come from the optional ``detection`` section of the camera config:
+    - ``detection.roi: [x1, y1, x2, y2]`` — an explicit crop, if you want to pick it by hand.
+    - otherwise the crop is the bounding box of all lane polygons, padded by
+      ``detection.roi_pad: {above, below, side}``. Padding ABOVE is the largest because a
+      vehicle's box sticks up above the lane (only its bottom edge is in the lane).
+    No ``detection`` section means "full frame", which is the old behaviour.
+    """
+    detection = cfg.get("detection")
+    if not detection:
+        return None
+
+    if detection.get("roi"):
+        x1, y1, x2, y2 = detection["roi"]
+    else:
+        from src.lane_monitor import lane_polygons  # every stretch of the lane, not just the first
+
+        pad = detection.get("roi_pad", {})
+        points = [point for polygon in lane_polygons(cfg) for point in polygon]
+        xs = [point[0] for point in points]
+        ys = [point[1] for point in points]
+        x1 = min(xs) - pad.get("side", 0)
+        x2 = max(xs) + pad.get("side", 0)
+        y1 = min(ys) - pad.get("above", 0)
+        y2 = max(ys) + pad.get("below", 0)
+
+    # Clamp into the frame so slicing never runs off the image edges.
+    x1 = max(0, min(int(x1), frame_width - 1))
+    x2 = max(x1 + 1, min(int(x2), frame_width))
+    y1 = max(0, min(int(y1), frame_height - 1))
+    y2 = max(y1 + 1, min(int(y2), frame_height))
+    return x1, y1, x2, y2
+
 # The two class groups whose boxes get a privacy blur in the annotated video. We blur
 # the TOP of a person (that is where a face sits) and the BOTTOM of a vehicle (that is
 # where a license plate sits). Keeping these names here — matched to the COCO class
@@ -522,6 +578,15 @@ def parse_args(argv):
         help="Process every Nth frame; integer >= 1 (default: 1).",
     )
 
+    # Frames per second to analyse. Overrides --stride and detection.sample_fps in config.
+    # 5 is plenty for blockages; see stride_for_sample_fps for why this is a big speed-up.
+    parser.add_argument(
+        "--sample-fps",
+        type=positive_float,
+        default=None,
+        help="Analyse this many frames per second, e.g. 5 (default: config detection.sample_fps, else --stride).",
+    )
+
     # Optional time cap. type=positive_float rejects anything that is not a positive
     # number. No default value means it stays None when omitted, which means "whole video".
     parser.add_argument(
@@ -556,7 +621,7 @@ def parse_args(argv):
 PROGRESS_INTERVAL_SECONDS = 5.0
 
 
-def process_video(video_path, output_dir, cfg, camera_id, start, *, stride, max_seconds, overwrite, save_annotated):
+def process_video(video_path, output_dir, cfg, camera_id, start, *, stride, max_seconds, overwrite, save_annotated, sample_fps=None):
     """Score one video and write its per-video detections CSV. Returns a summary dict.
 
     This is the heart of the detector: it decodes a single clip, runs YOLO tracking on
@@ -614,7 +679,9 @@ def process_video(video_path, output_dir, cfg, camera_id, start, *, stride, max_
     # --- Heavy, lazy imports (see the WHY above) ---------------------------------
     from ultralytics import YOLO  # the detector/tracker; loading weights is expensive.
     import cv2  # OpenCV: decode the video frame by frame.
+    import numpy as np  # point arrays for drawing the lane polygon.
     import pandas as pd  # assemble and write the CSV in the exact column order.
+    from src.lane_monitor import lane_polygons  # to draw every stretch of the lane
 
     video_path = Path(video_path)
     output_dir = Path(output_dir)
@@ -664,6 +731,9 @@ def process_video(video_path, output_dir, cfg, camera_id, start, *, stride, max_
     weights = model_cfg["weights"]
     conf_threshold = model_cfg["conf"]
     classes = model_cfg["classes"]
+    # The size YOLO resizes its input to. Bigger = small far-away objects survive the
+    # resize, at some speed cost. 640 is the ultralytics default.
+    imgsz = model_cfg.get("imgsz", 640)
 
     # Load the YOLO model ONCE for this whole video. Reloading weights per frame would be
     # absurdly slow; one load up front is reused for every frame we track.
@@ -687,6 +757,18 @@ def process_video(video_path, output_dir, cfg, camera_id, start, *, stride, max_
                 f"Could not read a valid frame rate (fps) from video {video_path} "
                 f"(got {fps!r}); cannot compute frame timestamps."
             )
+
+        # Convert "frames per second to analyse" into a stride now that we know the fps.
+        if sample_fps:
+            stride = stride_for_sample_fps(fps, sample_fps)
+            print(f"[{video_name}] analysing {sample_fps} fps of {fps:.0f} fps footage (stride {stride})")
+
+        # The crop YOLO looks at (None = full frame). Worked out from the first frame size.
+        frame_width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        roi = detection_roi(cfg, frame_width, frame_height)
+        if roi is not None:
+            print(f"[{video_name}] detecting inside crop x={roi[0]}..{roi[2]}, y={roi[1]}..{roi[3]} at imgsz {imgsz}")
 
         rows = []  # one dict per tracked detection, in CSV_COLUMNS order.
         frames_processed = 0  # count of frames we actually ran the model on.
@@ -741,11 +823,21 @@ def process_video(video_path, output_dir, cfg, camera_id, start, *, stride, max_
                 # object keeps the same id). We pass the config classes and conf so the model
                 # itself only returns the classes we want at/above the threshold; verbose=False
                 # keeps ultralytics from flooding stdout and drowning our progress lines.
+                # With a crop, YOLO only sees the band around the far lane (upscaled to
+                # imgsz). offset_x/offset_y shift its boxes back to full-frame pixels so
+                # the CSV, the lane polygon and the counting line all use one coordinate system.
+                if roi is not None:
+                    offset_x, offset_y = roi[0], roi[1]
+                    model_input = frame[roi[1]:roi[3], roi[0]:roi[2]]
+                else:
+                    offset_x, offset_y = 0, 0
+                    model_input = frame
                 results = model.track(
-                    frame,
+                    model_input,
                     persist=True,
                     classes=classes,
                     conf=conf_threshold,
+                    imgsz=imgsz,
                     verbose=False,
                 )
 
@@ -788,6 +880,8 @@ def process_video(video_path, output_dir, cfg, camera_id, start, *, stride, max_
                         # xywh is center-x, center-y, width, height in PIXELS. This is exactly
                         # the cx, cy, w, h the CSV contract wants (not corner coords).
                         cx, cy, w, h = (float(v) for v in box.xywh[0])
+                        cx += offset_x  # crop pixels -> full-frame pixels
+                        cy += offset_y
 
                         # Map the class id to its name; fall back to the raw id as a string if
                         # the model somehow lacks the name, so we never crash on a stray class.
@@ -918,6 +1012,15 @@ def process_video(video_path, output_dir, cfg, camera_id, start, *, stride, max_
                             # the box hugs the top of the frame) so it stays readable.
                             text_y = py1 - 6 if py1 - 6 > 6 else py1 + 16
                             cv2.putText(annotated, label, (px1, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
+
+                        # Draw the lane polygon (yellow) and the detection crop (blue) so a
+                        # glance at the annotated video shows whether they cover the vehicles.
+                        if cfg.get("lane_polygon"):
+                            for polygon in lane_polygons(cfg):
+                                lane_points = np.array(polygon, dtype=np.int32)
+                                cv2.polylines(annotated, [lane_points], True, (0, 255, 255), 2)
+                        if roi is not None:
+                            cv2.rectangle(annotated, (roi[0], roi[1]), (roi[2], roi[3]), (255, 128, 0), 1)
 
                         writer.write(annotated)
                     except Exception as annotate_error:
@@ -1099,6 +1202,10 @@ def main(argv=None):
                 camera_id,
                 start,
                 stride=args.stride,
+                # --sample-fps wins; otherwise use the config's sample_fps unless the
+                # user asked for an explicit --stride.
+                sample_fps=args.sample_fps
+                or (cfg.get("detection", {}).get("sample_fps") if args.stride == 1 else None),
                 max_seconds=args.max_seconds,
                 overwrite=args.overwrite,
                 save_annotated=args.save_annotated,

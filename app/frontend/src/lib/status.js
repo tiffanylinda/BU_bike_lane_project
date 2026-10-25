@@ -1,32 +1,20 @@
 // status.js — PURE status logic for the rider phone.
 //
-// WHY pure: statusAt() depends ONLY on its arguments (t, events, thresholds). It reads no
-// clock and holds no state. That means seeking, restarting, or changing playback speed all
-// recompute the exact same answer for a given time with zero drift — the UI just asks
-// "what is the status at second t?" and trusts the result.
+// WHY pure: every function here depends ONLY on its arguments. It reads no clock and holds
+// no state. That means seeking, restarting, or changing playback speed all recompute the
+// exact same answer for a given time with zero drift — the UI just asks "what is the
+// status at second t?" and trusts the result.
+//
+// The thresholds (10 s possible, 30 s blocked, clear debounce) are NOT applied here: they
+// already ran inside LaneMonitor when events.json was built. The front end only replays
+// the events, so the demo always agrees with the batch analysis.
 
-// Find the event that is active at time t, if any.
-// An event is "active" when event.start <= t <= event.end.
-// If events overlapped we'd pick the first match; the demo data does not overlap.
-function activeEventAt(t, events) {
-  for (const event of events) {
-    if (t >= event.start && t <= event.end) {
-      return event
-    }
-  }
-  return null
-}
-
-// Find the most recent event that ENDED at or before t (used for the clear-debounce
-// smoothing window, so the phone does not flicker back to "clear" the instant an event ends).
-function lastEndedEventAt(t, events) {
+// The latest event at or before t (events are sorted by t), or null before the first one.
+export function latestEventAt(t, events) {
   let latest = null
   for (const event of events) {
-    if (event.end <= t) {
-      if (latest === null || event.end > latest.end) {
-        latest = event
-      }
-    }
+    if (event.t > t) break
+    latest = event
   }
   return latest
 }
@@ -34,104 +22,35 @@ function lastEndedEventAt(t, events) {
 /**
  * statusAt — compute the lane status at a point in time.
  *
- * @param {number} t         seconds into the recording
- * @param {Array}  events    [{ start, end, vehicle, camera, note }, ...] (seconds)
- * @param {object} thresholds { possibleAfterSeconds, blockedAfterSeconds, clearDebounceSeconds }
+ * @param {number} t       seconds into the clip
+ * @param {Array}  events  sorted [{ t, type, vehicle, ... }]
  * @returns {{ level:'clear'|'possible'|'blocked', vehicle:?string, event:?object, blockedForSeconds:number }}
  */
-export function statusAt(t, events, thresholds) {
-  const { possibleAfterSeconds, blockedAfterSeconds, clearDebounceSeconds } = thresholds
+export function statusAt(t, events) {
+  const event = latestEventAt(t, events)
 
-  const event = activeEventAt(t, events)
-
-  // No event active right now. We are "clear". (The debounce window below is handled
-  // implicitly: once an event ends there is no active event, so we are clear — the
-  // debounce value is available for callers that want to suppress rapid re-alerts.)
-  if (!event) {
-    // Keep a reference to the just-ended event during the smoothing window so callers
-    // could, if desired, know what we were just watching. Status itself stays "clear".
-    const recentlyEnded = lastEndedEventAt(t, events)
-    const withinDebounce =
-      recentlyEnded !== null && t - recentlyEnded.end <= clearDebounceSeconds
-    return {
-      level: 'clear',
-      vehicle: withinDebounce ? recentlyEnded.vehicle : null,
-      event: null,
-      blockedForSeconds: 0,
-    }
+  if (event && event.type === 'blocked') {
+    // Red: blocked. blockedForSeconds counts live from the moment the lane turned red.
+    return { level: 'blocked', vehicle: event.vehicle, event, blockedForSeconds: t - event.t }
   }
-
-  // An event is active. How long has the vehicle been stopped? Measured from event.start.
-  const stoppedForSeconds = t - event.start
-
-  if (stoppedForSeconds >= blockedAfterSeconds) {
-    // Red: blocked. blockedForSeconds is a LIVE counter from the start of the event.
-    return {
-      level: 'blocked',
-      vehicle: event.vehicle,
-      event,
-      blockedForSeconds: stoppedForSeconds,
-    }
+  if (event && event.type === 'possible') {
+    return { level: 'possible', vehicle: event.vehicle, event, blockedForSeconds: 0 }
   }
-
-  if (stoppedForSeconds >= possibleAfterSeconds) {
-    // Amber: possible. Stopped long enough to watch, not long enough to call blocked.
-    return {
-      level: 'possible',
-      vehicle: event.vehicle,
-      event,
-      blockedForSeconds: 0,
-    }
-  }
-
-  // Event active but stopped for < possibleAfterSeconds: still treat the lane as clear.
-  // (A vehicle that only just stopped is not yet an alert.)
-  return {
-    level: 'clear',
-    vehicle: event.vehicle,
-    event,
-    blockedForSeconds: 0,
-  }
+  // No event yet, or the latest one is "cleared".
+  return { level: 'clear', vehicle: null, event, blockedForSeconds: 0 }
 }
 
 /**
- * alertsUpTo — derive the list of alert points that have occurred by time t.
- *
- * WHY: RecentAlerts shows a history. An event generates an alert when it first reaches
- * 'possible' (start + possibleAfterSeconds) and again when it reaches 'blocked'
- * (start + blockedAfterSeconds). We only include alert points whose time <= t, so the
- * list grows naturally as the replay plays and shrinks correctly when you seek backward.
- *
- * @returns {Array<{ level:'possible'|'blocked', vehicle:string, time:number, note:string }>}
- *          sorted by time ascending.
+ * alertsUpTo — every event that has happened by time t, newest first. The list grows
+ * while playing and shrinks correctly when you seek backward.
  */
-export function alertsUpTo(t, events, thresholds) {
-  const { possibleAfterSeconds, blockedAfterSeconds } = thresholds
-  const alerts = []
+export function alertsUpTo(t, events) {
+  return events.filter((e) => e.t <= t).reverse()
+}
 
-  for (const event of events) {
-    const possibleAt = event.start + possibleAfterSeconds
-    const blockedAt = event.start + blockedAfterSeconds
-
-    // Only fire the "possible" alert if the event actually lasts that long AND we've reached it.
-    if (possibleAt <= event.end && t >= possibleAt) {
-      alerts.push({
-        level: 'possible',
-        vehicle: event.vehicle,
-        time: possibleAt,
-        note: event.note,
-      })
-    }
-    if (blockedAt <= event.end && t >= blockedAt) {
-      alerts.push({
-        level: 'blocked',
-        vehicle: event.vehicle,
-        time: blockedAt,
-        note: event.note,
-      })
-    }
-  }
-
-  alerts.sort((a, b) => a.time - b.time)
-  return alerts
+/**
+ * bikesInWindow — bikes that crossed the counting line in the last windowSeconds.
+ */
+export function bikesInWindow(t, crossings, windowSeconds) {
+  return crossings.filter((c) => c.mode === 'bike' && c.t <= t && c.t > t - windowSeconds).length
 }

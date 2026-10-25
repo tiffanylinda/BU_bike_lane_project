@@ -1,5 +1,8 @@
 // config.js — SINGLE SOURCE OF TRUTH for every tunable number, label and path.
 // Change behaviour here, not inside components, so the demo stays easy to retune.
+//
+// Lane-status thresholds (possible / blocked / clear) are NOT here: they live in
+// config/camera.yaml and are applied by LaneMonitor when events.json is built.
 
 export const CONFIG = {
   // Backend API base URL. Reads from the Vite env at build time with a local default.
@@ -13,17 +16,13 @@ export const CONFIG = {
 
   // Fallback timeline length (seconds) used when the video is missing or its metadata
   // never loads. Keeps the clock, timeline and status logic working with no video.
-  videoDurationSeconds: 120,
+  videoDurationSeconds: 65,
 
-  // Product-steering timing, confirmed by the team. These drive status.js.
-  thresholds: {
-    possibleAfterSeconds: 10, // amber: a vehicle has been stopped at least 10s
-    blockedAfterSeconds: 30,  // red: stopped at least 30s
-    clearDebounceSeconds: 5,  // stay "clear" for a few seconds after an event ends (smoothing)
-  },
-
-  // Where this bike lane is, shown on the rider phone.
+  // Where this bike lane is, shown on the rider phone (events.json location.name wins).
   location: 'Comm Ave bike lane, Essex St to Kenmore Sq',
+
+  // Short route name shown under the lock-screen widget status.
+  routeLabel: 'Comm Ave route',
 
   // A STATIC, illustrative reroute shown only while the lane is blocked. This is a demo
   // suggestion, not a real routing result.
@@ -33,6 +32,10 @@ export const CONFIG = {
     description: 'Illustrative suggestion for this demo scenario.',
   },
 
-  // Label for the bike counter widget on the phone.
+  // Bike counter on the phone: bikes that crossed the counting line in this window.
+  bikesWindowSeconds: 600,
   bikesWindowLabel: 'bikes in the last 10 minutes',
+
+  // How long the slide-down notification stays visible (ms of real time).
+  notificationMs: 4000,
 }

@@ -2,10 +2,15 @@
 export default function Header() {
   return (
     <header className="header">
-      <h1 className="header__title">Comm Ave Bike Lane Monitor</h1>
-      <p className="header__subtitle">
-        Replay demo — lane status and rider alerts played back in sync with the video.
-      </p>
+      <div>
+        <h1 className="header__title">Comm Ave Bike Lane Monitor</h1>
+        <p className="header__subtitle">
+          Replay demo — lane status and rider alerts played back in sync with the video.
+        </p>
+      </div>
+      <a className="header__link" href="rider.html">
+        Open the rider web app →
+      </a>
     </header>
   )
 }

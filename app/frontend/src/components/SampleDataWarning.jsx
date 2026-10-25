@@ -3,7 +3,8 @@
 export default function SampleDataWarning() {
   return (
     <div className="sample-warning" role="status">
-      Showing sample data (data/sample_events.json) because data/events.json was not found.
+      ⚠ Showing SAMPLE data (data/sample_events.json). Real events will load automatically once
+      data/events.json exists.
     </div>
   )
 }

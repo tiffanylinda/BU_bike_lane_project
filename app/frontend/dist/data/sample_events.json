@@ -1,0 +1,21 @@
+{
+  "location": { "name": "Comm Ave bike lane, Essex St to Kenmore Sq", "lat": 42.3505, "lon": -71.1054 },
+  "clip_start_time": "2026-10-24T12:00:00-04:00",
+  "video": "media/demo_clip.mov",
+  "events": [
+    { "t": 20, "type": "possible", "vehicle": "truck", "stopped_for_s": 10, "event_id": 1 },
+    { "t": 40, "type": "blocked", "vehicle": "truck", "stopped_for_s": 30, "event_id": 1 },
+    { "t": 62, "type": "cleared", "vehicle": "truck", "stopped_for_s": 52, "duration_s": 52, "event_id": 1 }
+  ],
+  "crossings": [
+    { "t": 6, "mode": "pedestrian" },
+    { "t": 9, "mode": "bike" },
+    { "t": 17, "mode": "pedestrian" },
+    { "t": 28, "mode": "bike" },
+    { "t": 35, "mode": "pedestrian" },
+    { "t": 47, "mode": "bike" },
+    { "t": 51, "mode": "skateboard" },
+    { "t": 56, "mode": "bike" }
+  ],
+  "summary": { "blockages": 1, "minutes_blocked": 0.87, "bikes": 4 }
+}

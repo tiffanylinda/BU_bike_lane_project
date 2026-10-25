@@ -42,9 +42,15 @@ compressed **`demo_clip.mp4`** into `public/media/` and point `CONFIG.videoSrc` 
 
 ## Where to tune things
 
-`src/config.js` is the single source of truth: video path, fallback duration, the
-status thresholds (10s possible / 30s blocked / 5s clear-debounce), the location string,
-the static reroute, and the bike-counter label.
+`src/config.js` is the single source of truth: video path, fallback duration, the location
+string, the static reroute, the bike-counter window, and the banner duration.
 
-Status logic lives in `src/lib/status.js` as a pure function `statusAt(t, events, thresholds)`,
-so seeking, restarting, and changing speed always recompute cleanly with no drift.
+The data is the shared `events.json` contract (Spec 4 in `docs/KIRO_PROMPTS.md`): a list of
+`possible` / `blocked` / `cleared` events and bike/pedestrian `crossings`, all in seconds from
+the start of the clip. The 10 s / 30 s thresholds are applied upstream by LaneMonitor, not
+here, so the demo always agrees with the batch analysis. A file in any other format is
+ignored and the app falls back to `sample_events.json`.
+
+Status logic lives in `src/lib/status.js` as a pure function `statusAt(t, events)` (the latest
+event at or before `t`), so seeking, restarting, and changing speed always recompute cleanly
+with no drift.

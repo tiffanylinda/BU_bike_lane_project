@@ -8,7 +8,13 @@ blockage status, a blockage list, simple stats, and lets a rider submit a report
   (no backend required), reading events from `frontend/public/data/`, so it can be hosted
   on GitHub Pages as a public testing link for judges.
 
-## Run the frontend (replay demo)
+The front end has two pages:
+- `index.html`: the **replay demo** (the recorded clip next to a phone mock-up), for presenting.
+- `rider.html`: the **rider web app**, full-screen and mobile first, with no video. It is
+  the prototype of the future mobile app. For now it replays the recorded events on a
+  loop (the "demo feed"). On a phone, "Add to Home Screen" opens it like an installed app.
+
+## Run the frontend
 
 ```bash
 cd app/frontend

@@ -19,7 +19,24 @@ Requirements exercised: 3.4, 3.5, 13.1, 13.3, 13.4.
 
 import pytest
 
-from src.detect import parse_args, select_frame_indices, should_process_frame
+from src.detect import detection_roi, parse_args, select_frame_indices, should_process_frame, stride_for_sample_fps
+
+
+def test_sample_fps_becomes_a_stride():
+    assert stride_for_sample_fps(60, 5) == 12
+    assert stride_for_sample_fps(30, 5) == 6
+    assert stride_for_sample_fps(4, 5) == 1  # never below 1
+
+
+def test_detection_roi_pads_the_lane_polygon_and_clamps_to_the_frame():
+    cfg = {
+        "lane_polygon": [[274, 473], [847, 367], [857, 372], [274, 484]],
+        "detection": {"roi_pad": {"above": 90, "below": 30, "side": 40}},
+    }
+    assert detection_roi(cfg, 1920, 1080) == (234, 277, 897, 514)
+    cfg["detection"] = {"roi": [-10, 0, 5000, 600]}
+    assert detection_roi(cfg, 1920, 1080) == (0, 0, 1920, 600)
+    assert detection_roi({"lane_polygon": cfg["lane_polygon"]}, 1920, 1080) is None
 
 
 # --- 1. Frame-selection index math (Req 3.4, 13.1, 13.3) --------------------
