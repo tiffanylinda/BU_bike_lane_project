@@ -17,6 +17,11 @@ __pycache__/
 .ipynb_checkpoints/
 .DS_Store
 
-# ...except the app's static event JSON, which GitHub Pages needs to run without the backend
+# ...except the app's small sample data: GitHub Pages needs the event JSON, and the
+# backend reads its sample CSVs
 !app/frontend/public/data/
 !app/frontend/dist/data/
+!app/backend/data/
+
+# installed JavaScript packages (recreate with npm install)
+node_modules/

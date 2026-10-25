@@ -1,56 +1,55 @@
-# Comm Ave Bike Lane Monitor — Replay Demo (frontend)
+# Front end: replay demo and rider web app
 
-A standalone React + Vite front end that plays a recorded clip next to a phone-sized
-"rider app" showing lane status and alerts, played back in sync. Plain CSS, no UI library,
-no charts. It runs entirely from static files, so it can be hosted on GitHub Pages.
+React + Vite with plain CSS. It runs entirely from static files, with no backend, so it can
+be hosted on GitHub Pages.
 
-It does **not** require the FastAPI backend. Events are read from static JSON in
-`public/data/`, and if the video clip is missing the app still runs off a configured
-fallback duration.
+- `index.html` → `src/App.jsx`: the **replay demo**. The recorded clip plays next to a phone
+  mock-up; status and alerts play back in sync, with play/pause, 1x/2x/4x and a seekable timeline.
+- `rider.html` → `src/RiderApp.jsx`: the **rider web app**, full-screen on a phone. Its data
+  comes from `src/hooks/useDemoFeed.js`, which replays the recorded events on a loop. A live
+  feed can replace that hook later without changing the screens.
+
+Both pages show the same rider screen (`src/components/RiderScreen.jsx`).
 
 ## Run it
 
 ```bash
-cd app/frontend
 npm install
-npm run dev        # local dev server (Vite prints the URL, e.g. http://localhost:5173)
+npm run dev        # http://localhost:5173 (replay demo), /rider.html (rider web app)
+npm run build      # static files in dist/
+npm run preview    # serve dist/ to check the build
 ```
 
-Build and preview the production bundle:
+## Data
 
-```bash
-npm run build      # outputs static files to dist/
-npm run preview    # serve the built dist/ locally to check it
-```
+`public/data/events.json` follows the shared format (Spec 4 in `docs/KIRO_PROMPTS.md`) and is
+written by `src/build_demo.py`. It holds `possible` / `blocked` / `cleared` events and
+bike/pedestrian `crossings`, with times in seconds from the start of the clip. The 10 s / 30 s
+rules are applied by LaneMonitor in the pipeline, so the app only replays the events. If the
+file is missing or in another format, the app uses `sample_events.json` and shows a notice.
+
+`src/lib/status.js` derives everything from the current time (the latest event at or before
+it), so seeking, restarting and changing speed always show the right state.
 
 ## The video clip
 
-The replay clip lives at `public/media/demo_clip.mov` **locally only** — it is large and
-gitignored (`*.mov`), so it is never committed. The app uses it when present and falls back
-to a placeholder stage (driven by `CONFIG.videoDurationSeconds`) when it is absent.
+Video files are gitignored. Put the clip at `public/media/demo_clip.mp4`; `.mov` often doesn't
+play in Chrome. To make a small browser-friendly copy:
 
-On **GitHub Pages** the `.mov` will not be there. To ship a playable clip, drop a small
-compressed **`demo_clip.mp4`** into `public/media/` and point `CONFIG.videoSrc` in
-`src/config.js` at it. MP4 plays reliably in browsers; `.mov` often does not.
+```bash
+ffmpeg -i input.mov -vf scale=1280:-2 -c:v libx264 -crf 28 -c:a aac -b:a 96k -movflags +faststart public/media/demo_clip.mp4
+```
 
-## GitHub Pages notes
+The clip path is `videoSrc` in `src/config.js`. Without a clip, the demo shows a placeholder and
+still plays back, using `videoDurationSeconds`. To publish a clip on GitHub Pages, add it with
+`git add -f`.
 
-- `vite.config.js` sets `base: './'` so all built asset paths are relative and work from a
-  project sub-path like `https://user.github.io/repo/`.
-- Everything the deployed site needs (events JSON, CSS, JS) is part of the build. No
-  backend, no localhost, no CDN.
+## GitHub Pages
 
-## Where to tune things
+`vite.config.js` sets `base: './'`, so the built files work from a sub-path like
+`https://user.github.io/repo/`. Publish the contents of `dist/`.
 
-`src/config.js` is the single source of truth: video path, fallback duration, the location
-string, the static reroute, the bike-counter window, and the banner duration.
+## Tuning
 
-The data is the shared `events.json` contract (Spec 4 in `docs/KIRO_PROMPTS.md`): a list of
-`possible` / `blocked` / `cleared` events and bike/pedestrian `crossings`, all in seconds from
-the start of the clip. The 10 s / 30 s thresholds are applied upstream by LaneMonitor, not
-here, so the demo always agrees with the batch analysis. A file in any other format is
-ignored and the app falls back to `sample_events.json`.
-
-Status logic lives in `src/lib/status.js` as a pure function `statusAt(t, events)` (the latest
-event at or before `t`), so seeking, restarting, and changing speed always recompute cleanly
-with no drift.
+`src/config.js` holds the video path, fallback duration, location text, reroute suggestion,
+bike-counter window and banner duration.

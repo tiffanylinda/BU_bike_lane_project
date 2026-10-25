@@ -1,0 +1,6 @@
+camera,start,end,vehicle,in_bike_lane,notes
+camA,00:20,01:25,truck,true,Delivery truck parked in bike lane (mm:ss offsets; ~65s shows blocked)
+camA,02:00,02:08,car,true,Car briefly pulled over; only 8s so it stays possible (mm:ss)
+camB,2024-05-17T08:35:00-04:00,2024-05-17T08:35:45-04:00,bus,true,Bus dwelling at stop overlapping lane (ISO datetimes; 45s)
+camB,03:30,03:50,car,false,"Car double-parked in the travel lane, not the bike lane (mm:ss)"
+camA,2024-05-17T08:39:00-04:00,2024-05-17T08:40:30-04:00,truck,true,Second truck 90s longest blockage (ISO datetimes)
